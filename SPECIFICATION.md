@@ -44,7 +44,7 @@ No admin override, unilateral verdict method, hidden moderation key, value custo
 - Source URLs per challenge: 1–3 with the same URL controls.
 - Content URL: one HTTPS canonical URL.
 - Snapshot digest: exactly 32-byte SHA-256 represented in the public API using the current supported bytes/string form verified before implementation.
-- Deadlines: submission and challenge deadlines are immutable per case, ordered strictly, and enforced by contract-supported time semantics verified against the current runtime.
+- Deadlines: the submission deadline is immutable per case. The challenge window duration is immutable per case and the actual challenge deadline is set exactly once as `evaluation_timestamp + challenge_window_seconds`, so delayed evaluation cannot erase the advertised challenge opportunity. Both are enforced with current contract-supported transaction time.
 - Duplicate note: reject equal normalized text digest within a case.
 - All caps and lengths are constructor/config constants recorded in views; no mutable policy system in the MVP.
 
@@ -64,7 +64,7 @@ Persist the provisional selected note, display consequence, score breakdown, and
 
 ### CHALLENGE
 
-The phase opens immediately after a successful provisional evaluation. Accept bounded challenges until the immutable challenge deadline. A permissionless resolution call re-evaluates the complete frozen note set together with every valid challenge source. Zero challenges preserve the provisional result after the window; one or more challenges require the same substantive consensus standard for the final result.
+The phase opens immediately after a successful provisional evaluation and sets the immutable challenge deadline from the case's locked challenge-window duration. Accept bounded challenges until that deadline. A permissionless resolution call re-evaluates the complete frozen note set together with every valid challenge source. Zero challenges preserve the provisional result after the window; one or more challenges require the same substantive consensus standard for the final result.
 
 ### FINALIZED
 
@@ -110,7 +110,7 @@ Reputation is a signed app-local integer keyed only by wallet address, non-trans
 
 - Final `DISPLAY` selected author: +2.
 - Final `DISPLAY_WITH_WARNING` selected author: +1.
-- Challenger whose submitted evidence changes either the selected note or display consequence from the provisional result: +1, once per finalized case even if multiple challenges were submitted by that address.
+- Challenger whose specific submitted evidence is independently identified by consensus as materially contributing to a change in either the selected note or display consequence from the provisional result: +1, once per finalized case. Aggregate outcome change must never reward every challenger automatically.
 - No negative scores in the MVP; non-winners remain unchanged.
 
 The UI and documentation must disclose that wallet addresses are pseudonymous, Sybil resistance is not provided, and reputation represents only this app's finalized evidence history.
