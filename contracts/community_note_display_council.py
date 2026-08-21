@@ -613,6 +613,9 @@ class CommunityNoteDisplayCouncil(gl.Contract):
 
     def __init__(self):
         self.case_count = u256(0)
+        # VERIFY-AT-STUDIO: confirm the deployment sender is registered as root upgrader.
+        root = gl.storage.Root.get()  # VERIFY-AT-STUDIO
+        root.upgraders.get().append(gl.message.sender_address)  # VERIFY-AT-STUDIO
 
     @gl.public.write
     def create_case(
@@ -1048,3 +1051,11 @@ class CommunityNoteDisplayCouncil(gl.Contract):
     def get_reputation(self, author: Address) -> i64:
         addr = author if isinstance(author, Address) else Address(author)
         return self.reputations.get(addr, i64(0))
+
+    @gl.public.write
+    def upgrade(self, new_code: bytes) -> None:
+        # VERIFY-AT-STUDIO: rehearse on a test contract before upgrading production.
+        root = gl.storage.Root.get()  # VERIFY-AT-STUDIO
+        code = root.code.get()  # VERIFY-AT-STUDIO
+        code.truncate()  # VERIFY-AT-STUDIO
+        code.extend(new_code)  # VERIFY-AT-STUDIO

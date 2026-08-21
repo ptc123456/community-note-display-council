@@ -1075,3 +1075,130 @@ def test_17_safe_failure_state_and_reputation_byte_for_byte_unchanged(
 
     assert contract.get_case(cid) == case_snapshot_before
     assert contract.get_reputation(direct_alice) == rep_alice_before
+
+
+def test_18_constructor_registers_deployer_in_root_upgraders_slot(
+    direct_vm, direct_deploy, direct_alice
+):
+    direct_vm.check_pickling = True
+    direct_vm.sender = direct_alice
+    direct_vm.warp("2026-08-22T10:00:00Z")
+    contract = direct_deploy(CONTRACT_PATH)
+
+    from genlayer import gl
+
+    root = gl.storage.Root.get()
+    upgraders = list(root.upgraders.get())
+    assert len(upgraders) == 1
+    assert upgraders[0].as_bytes == direct_alice
+    assert upgraders[0].as_hex.lower() == "0x" + direct_alice.hex().lower()
+
+
+def test_19_upgrade_method_mutates_root_code_slot_bytes(
+    direct_vm, direct_deploy, direct_alice
+):
+    direct_vm.check_pickling = True
+    direct_vm.sender = direct_alice
+    direct_vm.warp("2026-08-22T10:00:00Z")
+    contract = direct_deploy(CONTRACT_PATH)
+
+    from genlayer import gl
+
+    rehearsal_code = b"# minimal rehearsal upgrade payload for community note display council v2\n"
+    contract.upgrade(rehearsal_code)
+
+    assert bytes(gl.storage.Root.get().code.get()) == rehearsal_code
+
+
+def test_20_root_slot_and_domain_storage_coexist_without_layout_drift(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    direct_vm.check_pickling = True
+    direct_vm.sender = direct_alice
+    direct_vm.warp("2026-08-22T10:00:00Z")
+    contract = direct_deploy(CONTRACT_PATH)
+
+    now_ts = 1787392800
+    cid = contract.create_case(CONTENT_URL, SNAPSHOT_HASH, now_ts + 3600, 7200)
+
+    direct_vm.sender = direct_alice
+    contract.submit_note(cid, "Alice note", [NOTE_0_URL])
+    direct_vm.sender = direct_bob
+    contract.submit_note(cid, "Bob note", [NOTE_1_URL])
+
+    direct_vm.warp("2026-08-22T11:00:01Z")
+    direct_vm.sender = direct_alice
+    contract.lock_case(cid)
+
+    _setup_base_web_mocks(direct_vm)
+    llm_payload = {
+        "notes": [
+            {"note_id": 0, "relevance": 90, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+            {"note_id": 1, "relevance": 70, "source_quality": 70, "clarity": 70, "contradiction_risk": 10},
+        ],
+        "rationale": "Note 0 wins provisionally.",
+    }
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(llm_payload))
+    contract.evaluate_case(cid)
+
+    # Bob submits challenge
+    direct_vm.sender = direct_bob
+    contract.submit_challenge(cid, "Bob challenge reason", [CHALLENGE_URL])
+
+    direct_vm.warp("2026-08-22T13:00:02Z")
+    direct_vm.clear_mocks()
+    _setup_base_web_mocks(direct_vm)
+    direct_vm.mock_web(r".*reuters\.example\.org.*", {"status": 200, "body": CHALLENGE_BODY})
+    llm_resolve = {
+        "notes": [
+            {"note_id": 0, "relevance": 90, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+            {"note_id": 1, "relevance": 70, "source_quality": 70, "clarity": 70, "contradiction_risk": 10},
+        ],
+        "rationale": "Outcome unchanged.",
+        "impactful_challenge_ids": [],
+    }
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(llm_resolve))
+    direct_vm.sender = direct_alice
+    contract.resolve_challenges(cid)
+
+    contract.finalize_case(cid)
+
+    # Snapshot all storage state prior to upgrade
+    case_count_before = contract.get_case_count()
+    case_before = contract.get_case(cid)
+    note_count_before = contract.get_note_count(cid)
+    note_0_before = contract.get_note(cid, 0)
+    note_1_before = contract.get_note(cid, 1)
+    challenge_count_before = contract.get_challenge_count(cid)
+    challenge_0_before = contract.get_challenge(cid, 0)
+    rep_alice_before = contract.get_reputation(direct_alice)
+    rep_bob_before = contract.get_reputation(direct_bob)
+
+    # Execute upgrade
+    from genlayer import gl
+
+    v2_payload = b"# community note display council v2 bytecode payload\n"
+    direct_vm.sender = direct_alice
+    contract.upgrade(v2_payload)
+
+    # Assert Root Slot code was updated
+    assert bytes(gl.storage.Root.get().code.get()) == v2_payload
+
+    # Assert all domain storage fields are preserved and unaffected by Root Slot code mutation
+    assert contract.get_case_count() == case_count_before
+    assert contract.get_case(cid) == case_before
+    assert contract.get_note_count(cid) == note_count_before
+    assert contract.get_note(cid, 0) == note_0_before
+    assert contract.get_note(cid, 1) == note_1_before
+    assert contract.get_challenge_count(cid) == challenge_count_before
+    assert contract.get_challenge(cid, 0) == challenge_0_before
+    assert contract.get_reputation(direct_alice) == rep_alice_before
+    assert contract.get_reputation(direct_bob) == rep_bob_before
+
+    # Verify domain operations continue to function normally
+    now_ts_2 = 1787403602
+    cid2 = contract.create_case("https://example.com/posts/case-2", SNAPSHOT_HASH, now_ts_2 + 3600, 7200)
+    assert cid2 == 2
+    assert contract.get_case_count() == 2
+    contract.submit_note(cid2, "Post-upgrade note", [NOTE_0_URL])
+    assert contract.get_note_count(cid2) == 1
