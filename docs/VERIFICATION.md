@@ -1,8 +1,8 @@
 # Community Note Display Council Verification
 
-Status: in progress. This document records attempted Studionet cases; failed attempts are retained and never counted as successful journeys.
+Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST` approved. This document records attempted Studionet cases; failed attempts are retained and never counted as successful journeys.
 
-## Release boundary
+## Superseded release boundary
 
 - Network: GenLayer Studionet (chain ID `61999`)
 - RPC: `https://studio.genlayer.com/api`
@@ -12,6 +12,57 @@ Status: in progress. This document records attempted Studionet cases; failed att
 - Deployed source SHA-256: `8a96e546e485b3dd4b34750f1b15ae58a2f7937187f1d3135bc8ee8e11e2a0d5`
 - Locked deployer/upgrader: `0x277bF20771129ae224042d23b0311C1AC5a9AC1b`
 - Deployment evidence: `FINALIZED`, execution `SUCCESS`, consensus `Accepted`; deployed-code readback matched the source hash.
+
+## Replacement release boundary
+
+- Network: GenLayer Studionet (chain ID `61999`)
+- Contract: `0x3aB3Cf65F7BBD86bf998aCAcCc743Dd0Fdc82992`
+- Deployment transaction: `0x8123a9711312342118347513f45d4926bbd80cd5cfcff229f3c9fbb6ce23d54f`
+- Reviewed source commit: `c3d81b6ccf0da69eea5234e54963b2ce118d66df`
+- Reviewed source tree: `efe9481fbc61db85d8026e6d3bce9a71cb6b65ba`
+- Deployed source SHA-256: `deda1181712d173def9e0fb2de99f44a6d5dc95e94e67a6445b6124a85d21809`
+- Locked deployer/upgrader: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`
+- Deployment evidence: `FINALIZED / SUCCESS / MAJORITY_AGREE`, normal full-consensus mode, 3 agree and 2 quorum-idle validators; deployed source was `41881` bytes and matched the reviewed file byte-for-byte; finalized `get_case_count=0`; finalized deployer reputation `0`.
+- Explorer: `https://explorer-studio.genlayer.com/address/0x3aB3Cf65F7BBD86bf998aCAcCc743Dd0Fdc82992`
+
+### Retained replacement-deployment negative control
+
+- Contract: `0xa30643d5A1f0F169E5e25F9E1B309adEC6b59D5e`
+- Transaction: `0x067d33f01971c1fc2dc8d7ca5e6870d3ef2d48c84c6cafbc85a05e5e1c0fab14`
+- Terminal result: `FINALIZED / SUCCESS / MAJORITY_AGREE`.
+- Rejection reason: submitted code was `41882` bytes and had SHA-256 `68dc5d0cf5de8cf94daf5d6c28be06b03a87431f4e946371223ee45aa6a0f7eb`; comparison found one extra final newline versus the reviewed `41881`-byte source. It is not the release contract and none of its evidence counts toward release acceptance.
+
+## Replacement release live matrix
+
+| ID | Purpose | Actor | Method / arguments | Transaction | Terminal evidence | Authoritative readback | Result |
+|---|---|---|---|---|---|---|---|
+| RDEP-01 | Exact-byte replacement deployment | `0xeF5D...5902` locked deployer/upgrader | Fresh deploy, no constructor arguments | `0x8123a9711312342118347513f45d4926bbd80cd5cfcff229f3c9fbb6ce23d54f` | `FINALIZED / SUCCESS / MAJORITY_AGREE`; normal mode; 3 agree, 2 quorum-idle | Address `0x3aB3...2992`; source SHA-256 `deda...1809`; `get_case_count=0`; deployer reputation `0` | PASS |
+| RCASE-01 | Create fetchable-evidence release case | `0xeF5D...5902` | `create_case(https://example.com/, 13f5...25c, 1787475660, 3600)` | `0x2d3a0f651250eb02ed542ae4a9f138ee977fe7ca8addb22bb6756bf0584206d9` | `FINALIZED / SUCCESS / MAJORITY_AGREE` | Case `1` created `OPEN`; supplied URL/hash/deadline/window matched | PASS |
+| RNOTE-01 | Submit candidate note | `0xeF5D...5902` | `submit_note(1, Example Domain is reserved for documentation examples and should not be used for operational claims., [https://example.com/])` | `0x6dcc7e0afe95ec10183829bf8cb5cfc36fdcf109159b807fa191a0fc6ea4b1c0` | `FINALIZED / SUCCESS / MAJORITY_AGREE` | Case note count `1`; note `0` stored; case remained `OPEN` | PASS |
+| RNOTE-01N | Reject duplicate note replay | `0xeF5D...5902` | Replay `RNOTE-01` | `0xff735bb10cb10d264f956c19974d49c567673e1d4e981073da6e862c64b1c5fe` | `FINALIZED / ERROR / MAJORITY_AGREE`; `Sender has already submitted a note for this case` | No additional note; case remained `OPEN` | PASS (expected rejection) |
+| RLOCK-01N | Reject lock before submission deadline | `0xeF5D...5902` | `lock_case(1)` | `0x14a7dbb4fc4dbd53785e887467dfbbbec24e78f193e020b45fbc8a8c855930ef` | `FINALIZED / ERROR / MAJORITY_AGREE`; `Submission deadline has not passed yet` | Case remained `OPEN` | PASS (expected rejection) |
+| RLOCK-01 | Lock after submission deadline | `0xeF5D...5902` | `lock_case(1)` | `0x4329bd04dff9fbf2fdffb2a4bd05763af8e52bc5f5192d2230b7dce75e25efc7` | `FINALIZED / SUCCESS / MAJORITY_AGREE` | Case changed `OPEN -> LOCKED`; `locked_at=1787475709` | PASS |
+| REVAL-01 | Evaluate fetchable evidence | `0xeF5D...5902` | `evaluate_case(1)` | `0xc3ed8575d0fa507913167a265b17d7bd8eec41584068ebd5a8228eca25bc1ab8` | `FINALIZED / SUCCESS / MAJORITY_AGREE`; one round | Case changed `LOCKED -> CHALLENGE`; note `0`; `DISPLAY`; score `9635`; challenge deadline `1787479382` | PASS |
+| RCHAL-01A | First independent challenge | `0x22A2...2FB1` | `submit_challenge(1, documentation-only versus operational-use reason, [https://example.com/])` | `0xe5bbf7d74938692bd3221a6c9a0cc31e1af305208d018ae16360bda65d3f1e5e` | `FINALIZED / SUCCESS / MAJORITY_AGREE` | Challenge `0` stored; count `1` | PASS |
+| RCHAL-01B | Second independent challenge | `0x34b9...9D78` | `submit_challenge(1, reserved illustrative-purpose reason, [https://example.com/])` | `0x72a2871d86506fb21b04b0451531c5f743155f2b0cc1854dd7f21732d32fcc54` | `FINALIZED / SUCCESS / MAJORITY_AGREE` | Challenge `1` stored; count `2` | PASS |
+| RCHAL-01C | Third independent challenge | `0xfd79...e0f2` | `submit_challenge(1, no operational-endorsement reason, [https://example.com/])` | `0xe3a7fcffdab663b2b3bcf6cd7a261862a88505a40cd6cc6eac541b945dc648ce` | `FINALIZED / SUCCESS / MAJORITY_AGREE` | Challenge `2` stored; count `3` | PASS |
+| RCHAL-01N | Reject fourth challenge at cap | `0xeF5D...5902` | Fourth `submit_challenge` | `0x0a4e263ef9e4cefff4078feda8130a20a13d01d81149db6c6894f1bcf4969cbb` | `FINALIZED / ERROR / MAJORITY_AGREE`; `Maximum challenge count reached for this case` | Challenge count remained `3`; case remained `CHALLENGE` | PASS (expected rejection) |
+| RRESOLVE-01 | Resolve three challenges after deadline | `0xeF5D...5902` | `resolve_challenges(1)` | `0x285f66893dc106ec1b719aa6222ee93fab55c66af173ed1ef3d85b02579902cb` | `FINALIZED / SUCCESS / Accepted`; Studio normal full-consensus transaction | Case changed `CHALLENGE -> EVALUATED`; final note `0`; consequence `DISPLAY`; score `8615`; rationale digest `f3c8...aed1`; `impactful_challenge_ids=[]`; `resolved_at=1787479699` | PASS |
+| RFINAL-01 | Finalize resolved release case | `0xeF5D...5902` | `finalize_case(1)` | `0x8d47b8194cc9156a90bb8ce26ab36187a7ca801b12d551c92427a12004acba01` | `FINALIZED / SUCCESS / Accepted`; Studio normal full-consensus transaction | Case changed `EVALUATED -> FINALIZED`; final fields preserved; `finalized_at=1787479804` | PASS |
+| RREP-01 | Final reputation reconciliation | Finalized reads for note author and three challengers | `get_reputation(0xeF5D...5902)`, `get_reputation(0x22A2...2FB1)`, `get_reputation(0x34b9...9D78)`, `get_reputation(0xfd79...e0f2)` | Read-only finalized calls; no transaction | Note author `2`; challengers `0`, `0`, `0`, consistent with unchanged outcome and empty impactful-challenge list | PASS |
+| RINPUT-01N | Reject malformed content URL | `0xeF5D...5902` | `create_case(not-a-url, a*64, 1787484729, 3600)` | `0x2ab2ccd5e79e07382663ff6ea52fa3551392a84fc6f44a0b79127eb1d23aac4a` | `FINALIZED / ERROR / Accepted`; rollback: `Content URL must contain 10-600 characters` | Case count remained `1` immediately after rejection | PASS (expected rejection) |
+| RSAFE-02A | Create unavailable-evidence control case | `0xeF5D...5902` | `create_case(https://example.com/community-note-release-safe-failure, b*64, 1787481540, 3600)` | `0xe96cf2c2a77ee5bc6e0260a646d437844e997c5e528c3bb5dadd521bb43b64ae` | `FINALIZED / SUCCESS / Accepted`; Explorer return value `2` | Case `2` stored `OPEN`; finalized case count became `2` | PASS |
+| RSAFE-02B | Submit control note | `0xeF5D...5902` | `submit_note(2, unavailable-evidence control text, [https://example.com/])` | `0x941181fc3bb8df0ded42b85086eaeed61d9a67573c801ffd8d5e7d8f07e2dd42` | `FINALIZED / SUCCESS / Accepted`; Explorer return value `0` | Case `2` note count became `1` | PASS |
+| RSAFE-02C | Lock control case after deadline | `0xeF5D...5902` | `lock_case(2)` | `0xd8b5934724644b78758ba9674b159f41effba8c75ef4b4a3dcce296c90cfcd8d` | `FINALIZED / SUCCESS`; Studio full-consensus transaction | Case `2` changed `OPEN -> LOCKED`; `locked_at=1787481579` | PASS |
+| RSAFE-02D | Fail closed when content evidence returns HTTP 404 | `0xeF5D...5902` | `evaluate_case(2)` | `0xfa9dcf5db16d0d29bc3b5d66ed54860f3bc471c97478af1bac78b9fae169d87e` | `FINALIZED / ERROR / Undetermined`; rollback: `Failed to fetch content URL`, status `404` | Case `2` remained `LOCKED`; no provisional selection, scores, rationale, challenge deadline, or evaluation timestamp; case count remained `2` | PASS (expected safe failure) |
+
+### Replacement completion checkpoint
+
+- Case `1` completed the replacement-release lifecycle and is authoritatively `FINALIZED`.
+- Resolution transaction `0x285f...02cb` and finalization transaction `0x8d47...ba01` were both `FINALIZED / SUCCESS` in Studio full-consensus mode.
+- Final result: note `0`, `DISPLAY`, score `8615`, rationale digest `f3c88a06dc75a1ac8006fc7d46cafb12b0f580b66e51cbfc02d0f6956493aed1`, no impactful challenges.
+- Reputation reconciliation: note author `2`; all three challengers `0`.
+- Independent checkpoint verdict: `POST_DEPLOY_TEST Verdict: APPROVED`; blocking findings: none. The verdict covers source commit `c3d81b6ccf0da69eea5234e54963b2ce118d66df`, release contract `0x3aB3...2992`, and the replacement-bound evidence package recorded here.
 
 ## Live evidence ledger
 
@@ -40,7 +91,20 @@ Status: in progress. This document records attempted Studionet cases; failed att
 | RESOLVE-02C | Second post-deadline consensus attempt | `0xfd79...e0f2` Codex-browser Studio account | `resolve_challenges(2)` | `0x3136d092bafe700f789749abff60145108d22de8de07e3db1b531f27a651a8a0` | `FINALIZED / MAJORITY_DISAGREE`; leader returned successfully but final votes were 2 agree / 3 disagree after 4 rounds | Case remained `CHALLENGE`; `resolved_at=0`; challenge and provisional state unchanged | RETAINED FAILED ATTEMPT (not PASS) |
 | RESOLVE-02D | Bounded final post-deadline retry | `0xfd79...e0f2` Codex-browser Studio account | `resolve_challenges(2)` | `0xda4a47003a59135667ea20d896d39c46acf56825f6c2510563e874737eff8334` | `FINALIZED / MAJORITY_DISAGREE`; leader rollback: `Unchanged outcome cannot contain impactful challenge IDs`; final votes 3 disagree / 2 idle | Case remained `CHALLENGE`; `resolved_at=0`; challenge and provisional state unchanged | RETAINED FAILED ATTEMPT (not PASS) |
 
-## Upgrade rehearsal
+## Replacement-bound upgrade rehearsal
+
+- Purpose and boundary: isolated recovery rehearsal for the exact replacement-release V1 source (`41881` bytes, SHA-256 `deda1181712d173def9e0fb2de99f44a6d5dc95e94e67a6445b6124a85d21809`). It did not mutate the release contract.
+- Disposable contract: `0x321E90A6f14298Bc7142c09418f940224E7aDd5d`.
+- Exact-source deployment: transaction `0xb28e8b998f6bc0fc2a00f99dea7853581445ffed5bccab403869fb54f7869c57`, sent by the locked release deployer/upgrader `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`.
+- Root upgrader registration proof: the exact deployed constructor appends `gl.message.sender_address` to `gl.storage.Root.get().upgraders`; deployment finalized successfully and atomically from `0xeF5D...5902`. Runtime authorization was then proven functionally by the same account succeeding at Root code mutation while a different account was rejected at `root.code.truncate()` with `SystemError: 6: forbidden`.
+- Seed state: transaction `0xf9e990af9f2bf8c9e3209301993079a291b4188ddcfac56e88aeca37ddb60df9`; finalized case count `1`; case `1` was `OPEN` with URL `https://example.com/upgrade-rehearsal`, snapshot hash `c` repeated 64 times, creator `0xeF5D...5902`, submission deadline `1787485776`, challenge window `7200`, and all remaining fields at their initial values.
+- Unauthorized negative control: account `0x34b92E6553eaCA11A00A9d86d75d8a7881779D78`, transaction `0x335be9fb93ac1eb0309e778147240dc5bf3eaa8a3607d2c4ca0d128259058f03`, `FINALIZED / ERROR / Accepted`, `SystemError: 6: forbidden` at Root code mutation. Finalized case `1` remained byte-for-byte unchanged.
+- Retained encoding failure: transaction `0x66e464d85ce02255c79147f360d6ca7b024abaae062987b4f6af4328e0488c7e`, `FINALIZED / ERROR / Accepted`; the rejected `0x<hex>` bytes encoding produced `TypeError: 'int' object is not iterable`. It is not counted as successful upgrade evidence and caused no state mutation.
+- Authorized V2 upgrade: transaction `0xfccd2808163003d468188c6ebf28bd29335651a695cbc429b25b3ebac8c924da`, sent by `0xeF5D...5902`, `FINALIZED / SUCCESS / Accepted` in normal mode; method `upgrade`; return `null`.
+- V2 code proof: `gen_getContractCode` returned `41970` bytes with SHA-256 `9c04649e9832043742b9397da0e643edfd3b13c1160513aba4ac72d67227cce4`; decoded source contains `get_contract_version()` returning `v2.0.0`.
+- Authoritative post-upgrade reads at `Finalized`: `get_contract_version="v2.0.0"`; `get_case_count=1`; case `1` matched the complete pre-upgrade snapshot byte-for-byte. This proves compatible code replacement and storage preservation for the exact replacement revision.
+
+## Superseded upgrade rehearsal
 
 - Disposable contract: `0x590CdD262eD7446b97a8EC30E03c94350E636659`
 - Deployment transaction: `0x3b8124bfe9c7a0d796bb63f494cd91ff269286986ab6afcc629fe25bab29550e`
@@ -51,11 +115,11 @@ Status: in progress. This document records attempted Studionet cases; failed att
 - Unauthorized V3 attempt: `0xa03b9e7cbc520a5bb6070ea1b04aa4aa1f58c1e85d71e650a5b78a6435f75d6d`, sent by `0xBf90Af1bc61314775d57B641b89c1f702a93b40D`.
 - Unauthorized result: `FINALIZED / ERROR`, `SystemError: 6: forbidden`; V2 code hash, version, count, and case state remained unchanged.
 
-## Pending release cases
+## Replacement release matrix completeness
 
-The release matrix is not complete until post-deadline lock, evaluation, challenge/replay controls, challenge resolution, finalization, reputation, invalid-input/cap boundaries, safe evidence failure, and final Explorer/RPC reconciliation are recorded above. No pending row is a PASS.
+The replacement release records post-deadline lock, evaluation, three independent challenges, duplicate/cap/deadline controls, successful challenge resolution, finalization, four-actor reputation reconciliation, malformed-input rollback, safe HTTP-404 evidence rollback, and Explorer plus finalized-state reconciliation. The anonymous reviewer approved `POST_DEPLOY_TEST`; GitHub/Vercel release gates remain pending.
 
-## Resume checkpoint — 2026-08-23
+## Superseded-release resume checkpoint — closed 2026-08-23
 
 - Studio/RPC rate-limit recovery: closed 29 unrelated editor tabs, retained only `community_note_display_council_release.py`, and restored all 20 hosted validators without changing source or on-chain state.
 - Latest authoritative case `2` state: `CHALLENGE`; three challenges stored; challenge deadline `1787472512`; provisional note `0`, consequence `DISPLAY`, score `9900`.
@@ -65,9 +129,9 @@ The release matrix is not complete until post-deadline lock, evaluation, challen
 - Resume action: re-read case `2`; only when on-chain time is at or beyond `1787472512`, call `resolve_challenges(2)`, require terminal success and authoritative `EVALUATED` readback, then call `finalize_case(2)` and verify final fields plus all four actor reputation readbacks.
 - Do not use the previously created SDK account for writes. Do not switch to Chrome or another wallet surface.
 
-## Live defect checkpoint — 2026-08-23
+## Superseded-release live defect checkpoint — 2026-08-23
 
 - Three bounded post-deadline resolution attempts failed to reach consensus; no attempt mutated case `2`.
 - Root cause observed in the exact deployed revision: the challenge-resolution prompt demonstrates non-empty `impactful_challenge_ids` even when the independently derived outcome can remain unchanged, while response validation rejects that combination. A leader that returned an otherwise valid unchanged result therefore rolled back; another valid leader result still failed validator agreement.
 - Stop condition applied: do not spam or replay `resolve_challenges(2)`. Correct and locally verify the contract, obtain a new exact-revision `PRE_DEPLOY` approval, then use a replacement Studionet deployment and rerun the release matrix.
-- The current release remains retained as failed live evidence and is not eligible for `POST_DEPLOY_TEST` approval, finalization, GitHub/Vercel release, or submission.
+- Contract `0x5971D0c80Ae1F57497Cc30Ad0f5e0A86e47D0AB1` remains retained as failed live evidence and is superseded; none of its failed resolution attempts count toward replacement-release acceptance.

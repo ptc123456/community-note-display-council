@@ -10,3 +10,4 @@ frontend/*.tsbuildinfo
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
+SPECIFICATION.md
