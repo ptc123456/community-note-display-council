@@ -1,6 +1,6 @@
 # Community Note Display Council Verification
 
-Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST` approved. This document records attempted Studionet cases; failed attempts are retained and never counted as successful journeys.
+Status: replacement release and Chrome/OKX Vercel E2E complete; independent `POST_DEPLOY_TEST` approved. Exact-revision `POST_GITHUB_VERCEL_FINAL` re-review is pending after the documentation corrections recorded here. Failed Studionet or Vercel attempts are retained and never counted as successful journeys.
 
 ## Public release surfaces
 
@@ -8,10 +8,10 @@ Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST`
 - GitHub default branch: `main`
 - Live app: `https://community-note-display-council.vercel.app`
 - Vercel owner/project: `shingg/community-note-display-council`
-- Vercel production deployment: `dpl_TDpNHJYfN4rx2w1voc2aWXbzWcXJ` (`READY`)
+- Vercel production deployment: `dpl_2YTzQLcBmK6oCCbHuWBqJFCsTy7U` (`READY`), exact frontend source revision `efbb756`
 - Production bundle check: title `Community Note Display Council · Studionet`; compiled JavaScript contains release contract `0x3aB3...2992` and does not contain superseded release contract `0x5971...0AB1`.
-- Primary-AI live smoke check: HTTP 200; authoritative cases `1` and `2` loaded; exact release address and Explorer link rendered; full reload began disconnected; Connect Wallet opened an accessible selector and, with no supported wallet installed in the Codex browser, truthfully displayed the MetaMask/OKX/Rabby installation state.
-- Mandatory user-executed independent-wallet Vercel E2E: `PENDING`; this cannot be replaced by the smoke check above.
+- Primary-AI live verification: HTTP 200; exact release address and Explorer links rendered; full reload began disconnected; the wallet selector exposed MetaMask, OKX Wallet, and Rabby.
+- Mandatory independent-wallet Vercel E2E: `COMPLETE` in user Chrome with the exact selected OKX EIP-6963 provider and actor `0x896Ef52d620eA3CCdA34B4E72a8E197974E4e39E`. Case `3` completed create, note, lock, evaluate, challenge, resolve, finalize, and authoritative reputation readback on the release contract. The full ledger is below.
 
 ### Retained live-Vercel wallet failure and correction
 
@@ -19,7 +19,7 @@ Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST`
 - Attempted path: live `create_case` from the production web app. Client-side result: `Transaction Failed — Method not found: wallet_getSnaps`; no transaction hash was produced and authoritative case count did not change.
 - Root cause: `getWriteClient` called the SDK's MetaMask-specific `client.connect('studionet')`, which accesses `window.ethereum.wallet_getSnaps` instead of remaining on the exact EIP-6963 OKX provider selected by the user.
 - Correction: removed the MetaMask Snap connection path; write-client construction now uses only the captured selected provider and account. A regression asserts that neither the selected provider nor ambiguous global provider receives a Snap request. Frontend verification after correction: `20/20` tests passed and production build passed.
-- Status: corrected bundle must be redeployed and the affected live OKX journey rerun; this failed attempt is retained and is not a PASS.
+- Closure: the failed Snap attempt is retained and is not a PASS. The correction was deployed as `dpl_2YTzQLcBmK6oCCbHuWBqJFCsTy7U`, and the complete OKX case `3` lifecycle below passed on that exact production deployment.
 - Corrected-bundle signature rejection control: the first retry was intentionally rejected in OKX; the UI truthfully reported `Transaction signature rejected by user`, no hash, and no mutation.
 - Corrected-bundle create transaction: `0x570f1b2916b9c377c7520507cefe2798f412df3916f0ec912bf634d6e965c272`, actor `0x896e...e39e`, method `create_case`, release contract `0x3aB3...2992`; RPC evidence was `FINALIZED / SUCCESS / MAJORITY_AGREE` with 3 agree and 2 quorum-idle validators. Authoritative readback: case count `3`; case `3` is `OPEN`, creator/account, URL, snapshot hash, one-hour deadline, and `3600`-second challenge window match the signed inputs.
 - Second live defect: despite the successful transaction and readback, the frontend labeled it failed with `Conflicting or unknown execution result indicators in receipt`. The Studionet SDK's simplified leader receipt reports `execution_result: "SUCCESS"`, while the classifier recognized only `FINISHED_WITH_RETURN`/numeric `1`. The transaction link also used stale `/tx/` routing.
@@ -101,7 +101,19 @@ Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST`
 - Vercel finalize transaction: `0xf5bb8075ceab4a1c91632b32b22d0fac94464d1714f4536c638f9977e7ed32f2`, same exact OKX actor/provider, `finalize_case(3)`, `FINALIZED / MAJORITY_AGREE`, 3 agree and 2 quorum-idle. Authoritative readback: case `3` changed `EVALUATED -> FINALIZED`, final fields remained unchanged, `finalized_at=1787492715`.
 - Final reputation reconciliation: authoritative `get_reputation(0x896E...e39E)=2`; the live connected-wallet Reputation modal independently rendered `2 pts`. This actor was both note author and the single non-impactful challenger; the finalized `DISPLAY` author award is `+2` and no challenger award was added.
 - Vercel happy-path lifecycle is complete for case `3`: create, note, post-deadline lock, consensus evaluation, challenge, post-deadline resolution, finalization, transaction Explorer routes, authoritative state readbacks, and reputation readback all passed on the release contract. Final independent `POST_GITHUB_VERCEL_FINAL` approval remains required before submission.
-- Pending time boundary: case `3` cannot be locked before submission deadline `1787488613`; the remaining post-deadline Vercel lifecycle is not yet claimed as PASS.
+
+## GenLayer submission category and scorecard
+
+`GENLAYER SUBMISSION CATEGORY AND SCORECARD`
+
+- Category: `PROJECT`
+- Validity gate: `PASS` — the release contract, public repository, production deployment, Explorer evidence, exact-provider wallet flow, terminal execution evidence, and authoritative state readbacks are bound in this ledger.
+- GenLayer fit: `4/5`. Evidence: validators fetch and assess frozen public evidence, rank competing notes, resolve challenges, and commit the selected note, consequence, score, rationale digest, and reputation effects. Weakness: publisher identity and the creator-supplied snapshot digest remain external trust assumptions.
+- Contract quality: `4/5`. Evidence: the bounded state machine enforces deadlines, duplicate and cap controls, safe rollback, exactly-once finalization, result-schema validation, and isolated Root-slot upgrade/storage preservation. Weakness: the MVP intentionally caps notes and challenges, and validator/model variability can require a permissionless retry.
+- Engineering: `4/5`. Evidence: 24 direct contract tests, 3/3 GenVM lint checks, 23/23 frontend tests, production build PASS, fail-closed receipt classification, refresh-safe readback recovery, and exact-revision deployment evidence. Weakness: live evidence is manually consolidated rather than produced by an automated Studionet E2E harness.
+- Frontend/UX: `4/5`. Evidence: Chrome/OKX production E2E completed the full lifecycle; the chooser supports exact allowlisted MetaMask, OKX, and Rabby providers; reload returns disconnected; transaction progress requires execution success plus readback; countdowns and accessible error states were live-verified. Weakness: the release does not include WalletConnect/mobile deep-link support.
+- Overall assessment: `4/5` — strong GenLayer-native decision logic and a complete evidence-backed release, with transparent MVP and external-evidence limitations.
+- Submission recommendation: `NOT READY` only until the anonymous reviewer approves this exact corrected public revision at `POST_GITHUB_VERCEL_FINAL`; no technical or live-E2E blocker remains.
 
 ### Replacement completion checkpoint
 
@@ -164,7 +176,7 @@ Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST`
 
 ## Replacement release matrix completeness
 
-The replacement release records post-deadline lock, evaluation, three independent challenges, duplicate/cap/deadline controls, successful challenge resolution, finalization, four-actor reputation reconciliation, malformed-input rollback, safe HTTP-404 evidence rollback, and Explorer plus finalized-state reconciliation. The anonymous reviewer approved `POST_DEPLOY_TEST`; GitHub/Vercel release gates remain pending.
+The replacement release records post-deadline lock, evaluation, three independent challenges, duplicate/cap/deadline controls, successful challenge resolution, finalization, four-actor reputation reconciliation, malformed-input rollback, safe HTTP-404 evidence rollback, and Explorer plus finalized-state reconciliation. The anonymous reviewer approved `POST_DEPLOY_TEST`; the exact corrected public revision is pending only `POST_GITHUB_VERCEL_FINAL` re-review.
 
 ## Superseded-release resume checkpoint — closed 2026-08-23
 

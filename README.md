@@ -10,7 +10,7 @@ Community Note Display Council is a GenLayer dApp that ranks competing contextua
 - [Deployment transaction](https://explorer-studio.genlayer.com/transactions/0x8123a9711312342118347513f45d4926bbd80cd5cfcff229f3c9fbb6ce23d54f)
 - [Verification ledger](docs/VERIFICATION.md)
 
-The production deployment is live. Its required independent-wallet E2E result is recorded separately in the verification ledger after the user completes the numbered matrix.
+The production deployment is live at Vercel deployment `dpl_2YTzQLcBmK6oCCbHuWBqJFCsTy7U`. The required Chrome/OKX independent-wallet E2E is complete through create, note, lock, evaluate, challenge, resolve, finalize, and reputation readback; transaction-level evidence is recorded in the verification ledger.
 
 ## Trust problem
 
@@ -68,7 +68,7 @@ npm test
 npm run build
 ```
 
-Current verified results: 24 direct contract tests passed, GenVM lint passed all 3 checks, 19 frontend tests passed, and the production frontend build completed. The live matrix and transaction-level evidence are in [docs/VERIFICATION.md](docs/VERIFICATION.md).
+Current verified results: 24 direct contract tests passed, GenVM lint passed all 3 checks, 23 frontend tests passed, and the production frontend build completed. The live matrix and transaction-level evidence are in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ## Deployment
 
