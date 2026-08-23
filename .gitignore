@@ -6,6 +6,7 @@ frontend/node_modules/
 frontend/dist/
 frontend/coverage/
 frontend/.vite/
+frontend/.vercel/
 frontend/*.tsbuildinfo
 frontend/.env
 frontend/.env.*
