@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { CaseData, CaseState, formatTimestamp } from '../genlayer/types';
+import { CaseData, CaseState } from '../genlayer/types';
 
 interface CaseFeedProps {
   cases: CaseData[];
@@ -172,7 +172,6 @@ export const CaseFeed: React.FC<CaseFeedProps> = ({
               <div
                 style={{
                   display: 'flex',
-                  justifyContent: 'space-between',
                   fontSize: 'var(--text-xs)',
                   color: 'var(--color-ink-muted)',
                 }}
@@ -180,7 +179,6 @@ export const CaseFeed: React.FC<CaseFeedProps> = ({
                 <span>
                   {c.note_count}/5 notes · {c.challenge_count}/3 chg
                 </span>
-                <span>{formatTimestamp(c.created_at)}</span>
               </div>
             </div>
           ))
