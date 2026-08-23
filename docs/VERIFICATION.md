@@ -13,6 +13,14 @@ Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST`
 - Primary-AI live smoke check: HTTP 200; authoritative cases `1` and `2` loaded; exact release address and Explorer link rendered; full reload began disconnected; Connect Wallet opened an accessible selector and, with no supported wallet installed in the Codex browser, truthfully displayed the MetaMask/OKX/Rabby installation state.
 - Mandatory user-executed independent-wallet Vercel E2E: `PENDING`; this cannot be replaced by the smoke check above.
 
+### Retained live-Vercel wallet failure and correction
+
+- Independent OKX account: `0x896eF52d620eA3ccDA34b4e72A8E197974E4e39e` (not a Studio account).
+- Attempted path: live `create_case` from the production web app. Client-side result: `Transaction Failed — Method not found: wallet_getSnaps`; no transaction hash was produced and authoritative case count did not change.
+- Root cause: `getWriteClient` called the SDK's MetaMask-specific `client.connect('studionet')`, which accesses `window.ethereum.wallet_getSnaps` instead of remaining on the exact EIP-6963 OKX provider selected by the user.
+- Correction: removed the MetaMask Snap connection path; write-client construction now uses only the captured selected provider and account. A regression asserts that neither the selected provider nor ambiguous global provider receives a Snap request. Frontend verification after correction: `20/20` tests passed and production build passed.
+- Status: corrected bundle must be redeployed and the affected live OKX journey rerun; this failed attempt is retained and is not a PASS.
+
 ## Superseded release boundary
 
 - Network: GenLayer Studionet (chain ID `61999`)

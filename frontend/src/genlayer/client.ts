@@ -11,19 +11,12 @@ export function getReadClient() {
 }
 
 // Factory for provider-bound write client
-export async function getWriteClient(provider: EIP1193Provider, account: string) {
-  const client = createClient({
+export function getWriteClient(provider: EIP1193Provider, account: string) {
+  return createClient({
     chain: studionet,
     account: account as any,
     provider: provider as any,
   });
-
-  // Explicitly connect to studionet per contract specification
-  if (typeof client.connect === 'function') {
-    await client.connect('studionet');
-  }
-
-  return client;
 }
 
 export function getConfiguredContractAddress(): string {

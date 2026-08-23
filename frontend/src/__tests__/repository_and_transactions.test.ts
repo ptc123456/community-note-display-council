@@ -29,6 +29,31 @@ describe('Repository and Transaction Engine', () => {
     vi.restoreAllMocks();
   });
 
+  it('creates a provider-bound write client without invoking MetaMask Snap methods', async () => {
+    const selectedProvider = { request: vi.fn() };
+    const ambiguousGlobalProvider = {
+      request: vi.fn(({ method }: { method: string }) => {
+        if (method === 'wallet_getSnaps') {
+          throw new Error('Method not found: wallet_getSnaps');
+        }
+        return undefined;
+      }),
+    };
+    Object.defineProperty(window, 'ethereum', {
+      configurable: true,
+      value: ambiguousGlobalProvider,
+    });
+
+    const client = await clientModule.getWriteClient(
+      selectedProvider as any,
+      '0x1111111111111111111111111111111111111111'
+    );
+
+    expect(client).toBeDefined();
+    expect(selectedProvider.request).not.toHaveBeenCalled();
+    expect(ambiguousGlobalProvider.request).not.toHaveBeenCalled();
+  });
+
   it('6. Missing/invalid contract address blocks actions', () => {
     expect(isValidContractAddress('')).toBe(false);
     expect(isValidContractAddress(null as any)).toBe(false);
