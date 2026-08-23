@@ -80,6 +80,18 @@ Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST`
 | RSAFE-02C | Lock control case after deadline | `0xeF5D...5902` | `lock_case(2)` | `0xd8b5934724644b78758ba9674b159f41effba8c75ef4b4a3dcce296c90cfcd8d` | `FINALIZED / SUCCESS`; Studio full-consensus transaction | Case `2` changed `OPEN -> LOCKED`; `locked_at=1787481579` | PASS |
 | RSAFE-02D | Fail closed when content evidence returns HTTP 404 | `0xeF5D...5902` | `evaluate_case(2)` | `0xfa9dcf5db16d0d29bc3b5d66ed54860f3bc471c97478af1bac78b9fae169d87e` | `FINALIZED / ERROR / Undetermined`; rollback: `Failed to fetch content URL`, status `404` | Case `2` remained `LOCKED`; no provisional selection, scores, rationale, challenge deadline, or evaluation timestamp; case count remained `2` | PASS (expected safe failure) |
 
+## Vercel OKX E2E evidence
+
+- Live URL: `https://community-note-display-council.vercel.app`
+- Browser/wallet boundary: user Chrome with the exact EIP-6963 OKX provider (`com.okex.wallet`); independent actor `0x896Ef52d620eA3CCdA34B4E72a8E197974E4e39E`. Reload returned the application to disconnected state before the user explicitly selected OKX again.
+- Client-side invalid-input control: `not-a-url` and `abc` were rejected inline before any wallet request, transaction hash, or state mutation.
+- User-rejected signature control: the first corrected-bundle create retry returned `Transaction signature rejected by user`; no transaction hash or state mutation was produced.
+- Create transaction: `0x570f1b2916b9c377c7520507cefe2798f412df3916f0ec912bf634d6e965c272`; `FINALIZED / SUCCESS / MAJORITY_AGREE`; authoritative readback created case `3` as `OPEN` with the signed actor, URL, snapshot, deadline, and `3600`-second challenge window.
+- Submit-note transaction: `0x09e6c2e180d46708f101876654001b03f03e4634200c1f732bbcc322e64f26bb`; actor and destination matched the wallet and release contract; `FINALIZED / SUCCESS / MAJORITY_AGREE`, with 3 agree and 2 quorum-idle validators.
+- Submit-note authoritative readback: `get_note_count(3)=1`; `get_note(3,0)` stored the exact note text, source `https://example.com/`, actor `0x896E...e39E`, and timestamp `1787485503`; case `3` remained `OPEN` with note count `1` and no challenge-state mutation.
+- Frontend reconciliation: the live UI reached `Complete and Reconciled`, rendered note `0`, the exact author/text/source, and the corrected Explorer route `/transactions/0x09e6...26bb`.
+- Pending time boundary: case `3` cannot be locked before submission deadline `1787488613`; the remaining post-deadline Vercel lifecycle is not yet claimed as PASS.
+
 ### Replacement completion checkpoint
 
 - Case `1` completed the replacement-release lifecycle and is authoritatively `FINALIZED`.
