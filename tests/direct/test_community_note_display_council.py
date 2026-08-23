@@ -979,6 +979,219 @@ def test_15_three_challenger_attribution_and_isolation(
     assert contract.get_reputation(direct_alice) == 0
 
 
+def test_15b_challenge_resolution_canonicalization_and_consensus_validation(
+    direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie
+):
+    direct_vm.check_pickling = True
+    direct_vm.sender = direct_alice
+    direct_vm.warp("2026-08-22T10:00:00Z")
+    contract = direct_deploy(CONTRACT_PATH)
+
+    now_ts = 1787392800
+    cid = contract.create_case(CONTENT_URL, SNAPSHOT_HASH, now_ts + 3600, 7200)
+
+    # Note 0 from Alice
+    contract.submit_note(cid, "Alice Note 0", [NOTE_0_URL])
+    # Note 1 from Bob
+    direct_vm.sender = direct_bob
+    contract.submit_note(cid, "Bob Note 1", [NOTE_1_URL])
+
+    direct_vm.warp("2026-08-22T11:00:01Z")
+    direct_vm.sender = direct_alice
+    contract.lock_case(cid)
+
+    _setup_base_web_mocks(direct_vm)
+    llm_provisional = {
+        "notes": [
+            {"note_id": 0, "relevance": 90, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+            {"note_id": 1, "relevance": 70, "source_quality": 70, "clarity": 70, "contradiction_risk": 10},
+        ],
+        "rationale": "Note 0 provisional winner.",
+    }
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(llm_provisional))
+    contract.evaluate_case(cid)
+
+    # Bob files challenge 0, Charlie files challenge 1
+    direct_vm.sender = direct_bob
+    contract.submit_challenge(cid, "Bob challenge 0", [CHALLENGE_URL])
+    direct_vm.sender = direct_charlie
+    contract.submit_challenge(cid, "Charlie challenge 1", ["https://charlie.example.org/c1"])
+
+    direct_vm.warp("2026-08-22T13:00:02Z")
+
+    # 1. Malformed, duplicate and out-of-range IDs fail closed
+    invalid_payloads = [
+        ({"impactful_challenge_ids": "not_a_list"}, "must be a list"),
+        ({"impactful_challenge_ids": [True]}, "must be an integer"),
+        ({"impactful_challenge_ids": ["0"]}, "must be an integer"),
+        ({"impactful_challenge_ids": [-1]}, "Invalid challenge ID"),
+        ({"impactful_challenge_ids": [5]}, "Invalid challenge ID"),
+        ({"impactful_challenge_ids": [0, 0]}, "Duplicate challenge ID"),
+    ]
+    for bad_extra, expected_error in invalid_payloads:
+        bad_llm = {
+            "notes": [
+                {"note_id": 0, "relevance": 90, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+                {"note_id": 1, "relevance": 70, "source_quality": 70, "clarity": 70, "contradiction_risk": 10},
+            ],
+            "rationale": "Testing malformed impactful IDs.",
+            **bad_extra,
+        }
+        direct_vm.clear_mocks()
+        _setup_base_web_mocks(direct_vm)
+        direct_vm.mock_web(r".*reuters\.example\.org.*", {"status": 200, "body": CHALLENGE_BODY})
+        direct_vm.mock_web(r".*charlie\.example\.org/c1.*", {"status": 200, "body": "Proof"})
+        direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(bad_llm))
+        with pytest.raises(Exception, match=expected_error):
+            contract.resolve_challenges(cid)
+
+    # 2. Unchanged outcome with valid bounded IDs canonicalizes safely to []
+    unchanged_llm_with_ids = {
+        "notes": [
+            {"note_id": 0, "relevance": 90, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+            {"note_id": 1, "relevance": 70, "source_quality": 70, "clarity": 70, "contradiction_risk": 10},
+        ],
+        "rationale": "Note 0 remains winner despite challenge evidence.",
+        "impactful_challenge_ids": [0, 1],
+    }
+    direct_vm.clear_mocks()
+    _setup_base_web_mocks(direct_vm)
+    direct_vm.mock_web(r".*reuters\.example\.org.*", {"status": 200, "body": CHALLENGE_BODY})
+    direct_vm.mock_web(r".*charlie\.example\.org/c1.*", {"status": 200, "body": "Proof"})
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(unchanged_llm_with_ids))
+
+    contract.resolve_challenges(cid)
+    case_resolved = json.loads(contract.get_case(cid))
+    assert case_resolved["state"] == "EVALUATED"
+    assert case_resolved["final_selected_note_id"] == 0
+    assert case_resolved["final_display_consequence"] == "DISPLAY"
+    assert case_resolved["impactful_challenge_ids"] == []
+
+    # 3. Validator accepts equivalent canonical unchanged results
+    # (Validator returns [] while leader had [0, 1] canonicalized to [])
+    val_unchanged_llm = {
+        "notes": [
+            {"note_id": 0, "relevance": 90, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+            {"note_id": 1, "relevance": 70, "source_quality": 70, "clarity": 70, "contradiction_risk": 10},
+        ],
+        "rationale": "Validator agrees note 0 is winner.",
+        "impactful_challenge_ids": [],
+    }
+    direct_vm.clear_mocks()
+    _setup_base_web_mocks(direct_vm)
+    direct_vm.mock_web(r".*reuters\.example\.org.*", {"status": 200, "body": CHALLENGE_BODY})
+    direct_vm.mock_web(r".*charlie\.example\.org/c1.*", {"status": 200, "body": "Proof"})
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(val_unchanged_llm))
+    assert direct_vm.run_validator() is True
+
+
+def test_15c_challenge_resolution_validator_disagreements_fail_closed(
+    direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie
+):
+    direct_vm.check_pickling = True
+    direct_vm.sender = direct_alice
+    direct_vm.warp("2026-08-22T10:00:00Z")
+    contract = direct_deploy(CONTRACT_PATH)
+
+    now_ts = 1787392800
+    cid = contract.create_case(CONTENT_URL, SNAPSHOT_HASH, now_ts + 3600, 7200)
+    contract.submit_note(cid, "Alice Note 0", [NOTE_0_URL])
+    direct_vm.sender = direct_bob
+    contract.submit_note(cid, "Bob Note 1", [NOTE_1_URL])
+
+    direct_vm.warp("2026-08-22T11:00:01Z")
+    direct_vm.sender = direct_alice
+    contract.lock_case(cid)
+
+    _setup_base_web_mocks(direct_vm)
+    llm_provisional = {
+        "notes": [
+            {"note_id": 0, "relevance": 90, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+            {"note_id": 1, "relevance": 70, "source_quality": 70, "clarity": 70, "contradiction_risk": 10},
+        ],
+        "rationale": "Note 0 provisional winner.",
+    }
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(llm_provisional))
+    contract.evaluate_case(cid)
+
+    # Bob files challenge 0, Charlie files challenge 1
+    direct_vm.sender = direct_bob
+    contract.submit_challenge(cid, "Bob challenge 0", [CHALLENGE_URL])
+    direct_vm.sender = direct_charlie
+    contract.submit_challenge(cid, "Charlie challenge 1", ["https://charlie.example.org/c1"])
+
+    direct_vm.warp("2026-08-22T13:00:02Z")
+
+    # Leader produces changed outcome: Note 1 wins with impactful_challenge_ids [1, 0] (unsorted in JSON)
+    leader_llm = {
+        "notes": [
+            {"note_id": 0, "relevance": 50, "source_quality": 40, "clarity": 70, "contradiction_risk": 80},
+            {"note_id": 1, "relevance": 85, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+        ],
+        "rationale": "Note 1 wins due to challenges 0 and 1.",
+        "impactful_challenge_ids": [1, 0],
+    }
+    direct_vm.clear_mocks()
+    _setup_base_web_mocks(direct_vm)
+    direct_vm.mock_web(r".*reuters\.example\.org.*", {"status": 200, "body": CHALLENGE_BODY})
+    direct_vm.mock_web(r".*charlie\.example\.org/c1.*", {"status": 200, "body": "Proof"})
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(leader_llm))
+    contract.resolve_challenges(cid)
+
+    # Prove changed outcome retains sorted validated impactful IDs: [0, 1]
+    case_resolved = json.loads(contract.get_case(cid))
+    assert case_resolved["final_selected_note_id"] == 1
+    assert case_resolved["impactful_challenge_ids"] == [0, 1]
+
+    # 1. Validator disagrees on winner (Validator says Note 0 wins) -> False
+    val_disagree_winner = {
+        "notes": [
+            {"note_id": 0, "relevance": 90, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+            {"note_id": 1, "relevance": 70, "source_quality": 70, "clarity": 70, "contradiction_risk": 10},
+        ],
+        "rationale": "Validator thinks Note 0 still wins.",
+        "impactful_challenge_ids": [],
+    }
+    direct_vm.clear_mocks()
+    _setup_base_web_mocks(direct_vm)
+    direct_vm.mock_web(r".*reuters\.example\.org.*", {"status": 200, "body": CHALLENGE_BODY})
+    direct_vm.mock_web(r".*charlie\.example\.org/c1.*", {"status": 200, "body": "Proof"})
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(val_disagree_winner))
+    assert direct_vm.run_validator() is False
+
+    # 2. Validator disagrees on consequence (Validator says DISPLAY_WITH_WARNING) -> False
+    val_disagree_consequence = {
+        "notes": [
+            {"note_id": 0, "relevance": 50, "source_quality": 40, "clarity": 70, "contradiction_risk": 80},
+            {"note_id": 1, "relevance": 60, "source_quality": 55, "clarity": 60, "contradiction_risk": 10},
+        ],
+        "rationale": "Validator scores Note 1 lower so consequence is DISPLAY_WITH_WARNING.",
+        "impactful_challenge_ids": [0, 1],
+    }
+    direct_vm.clear_mocks()
+    _setup_base_web_mocks(direct_vm)
+    direct_vm.mock_web(r".*reuters\.example\.org.*", {"status": 200, "body": CHALLENGE_BODY})
+    direct_vm.mock_web(r".*charlie\.example\.org/c1.*", {"status": 200, "body": "Proof"})
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(val_disagree_consequence))
+    assert direct_vm.run_validator() is False
+
+    # 3. Validator disagrees on impactful challenge IDs for changed outcome (Validator says [0] instead of [0, 1]) -> False
+    val_disagree_impactful_ids = {
+        "notes": [
+            {"note_id": 0, "relevance": 50, "source_quality": 40, "clarity": 70, "contradiction_risk": 80},
+            {"note_id": 1, "relevance": 85, "source_quality": 85, "clarity": 85, "contradiction_risk": 5},
+        ],
+        "rationale": "Validator thinks only challenge 0 was impactful.",
+        "impactful_challenge_ids": [0],
+    }
+    direct_vm.clear_mocks()
+    _setup_base_web_mocks(direct_vm)
+    direct_vm.mock_web(r".*reuters\.example\.org.*", {"status": 200, "body": CHALLENGE_BODY})
+    direct_vm.mock_web(r".*charlie\.example\.org/c1.*", {"status": 200, "body": "Proof"})
+    direct_vm.mock_llm(r"(?s).*objective evaluation council.*", json.dumps(val_disagree_impactful_ids))
+    assert direct_vm.run_validator() is False
+
+
 def test_16_finalize_transitions_and_exactly_once_reputation(direct_vm, direct_deploy, direct_alice):
     direct_vm.check_pickling = True
     direct_vm.sender = direct_alice

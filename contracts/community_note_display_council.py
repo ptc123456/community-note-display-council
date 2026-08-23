@@ -275,10 +275,8 @@ def _process_and_validate_llm_response(
                 raise gl.vm.UserError(f"Duplicate challenge ID in impactful_challenge_ids: {ch_id}")
             impact_set.add(ch_id)
 
-        # If outcome did not change, impactful_challenge_ids MUST be empty.
+        # If outcome did not change, canonicalize impactful_challenge_ids to [].
         if selected_id == prov_selected_note_id and consequence == prov_display_consequence:
-            if impact_set:
-                raise gl.vm.UserError("Unchanged outcome cannot contain impactful challenge IDs")
             impactful_ids = []
         else:
             impactful_ids = sorted(list(impact_set))
@@ -423,6 +421,12 @@ def _evaluate_council_task(
         prompt_lines.append("=== END CHALLENGES ===")
         prompt_lines.append("")
 
+    if is_challenge_resolution and len(challenges_list) > 0:
+        prompt_lines.append("CHALLENGE IMPACT RULES:")
+        prompt_lines.append("1. If the selected note ID and display consequence remain unchanged from the provisional evaluation, 'impactful_challenge_ids' MUST be [].")
+        prompt_lines.append("2. Include in 'impactful_challenge_ids' only the challenge IDs (0-indexed) that materially caused a change in the selected note or display consequence.")
+        prompt_lines.append("")
+
     prompt_lines.append("RESPONSE FORMAT:")
     prompt_lines.append("Return a valid JSON object strictly matching this schema:")
     response_schema_example: dict[str, Any] = {
@@ -438,7 +442,7 @@ def _evaluate_council_task(
         "rationale": "Concise summary of assessment.",
     }
     if is_challenge_resolution and len(challenges_list) > 0:
-        response_schema_example["impactful_challenge_ids"] = [0]
+        response_schema_example["impactful_challenge_ids"] = []
     prompt_lines.append(json.dumps(response_schema_example))
 
     prompt = "\n".join(prompt_lines)
