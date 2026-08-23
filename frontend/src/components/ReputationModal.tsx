@@ -164,7 +164,11 @@ export const ReputationModal: React.FC<ReputationModalProps> = ({
                 className={`form-input ${error ? 'error' : ''}`}
                 placeholder="0x1234567890abcdef1234567890abcdef12345678"
                 value={lookupAddress}
-                onChange={(e) => setLookupAddress(e.target.value)}
+                onChange={(e) => {
+                  setLookupAddress(e.target.value);
+                  setLookupReputation(null);
+                  setError(null);
+                }}
                 aria-invalid={Boolean(error)}
                 aria-describedby="lookup-address-help"
                 style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}

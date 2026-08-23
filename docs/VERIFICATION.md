@@ -90,6 +90,8 @@ Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST`
 - Submit-note transaction: `0x09e6c2e180d46708f101876654001b03f03e4634200c1f732bbcc322e64f26bb`; actor and destination matched the wallet and release contract; `FINALIZED / SUCCESS / MAJORITY_AGREE`, with 3 agree and 2 quorum-idle validators.
 - Submit-note authoritative readback: `get_note_count(3)=1`; `get_note(3,0)` stored the exact note text, source `https://example.com/`, actor `0x896E...e39E`, and timestamp `1787485503`; case `3` remained `OPEN` with note count `1` and no challenge-state mutation.
 - Frontend reconciliation: the live UI reached `Complete and Reconciled`, rendered note `0`, the exact author/text/source, and the corrected Explorer route `/transactions/0x09e6...26bb`.
+- Reputation stale-readback correction: live testing found that changing a successful reputation lookup to an invalid address left the prior score visible under the invalid label. The input-change boundary now clears both the prior result and error before any new lookup; an invalid address performs zero RPC reads and renders no stale score.
+- Deadline clarity correction: the live UI now shows only a one-second `h/m/s` countdown, avoiding absolute-clock and time-zone ambiguity. One ticking clock drives countdown text, expiry labels, and action eligibility. Regression suite: `23/23`; production build: PASS. The corrected bundle must be redeployed and retested before these items are closed.
 - Pending time boundary: case `3` cannot be locked before submission deadline `1787488613`; the remaining post-deadline Vercel lifecycle is not yet claimed as PASS.
 
 ### Replacement completion checkpoint

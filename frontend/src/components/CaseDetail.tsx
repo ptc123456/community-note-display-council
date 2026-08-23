@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   CaseData,
   CandidateNote,
   ChallengeData,
   formatAddress,
-  formatTimestamp,
   DisplayConsequence,
 } from '../genlayer/types';
 import { ScoreBreakdown } from './ScoreBreakdown';
@@ -27,6 +26,14 @@ interface CaseDetailProps {
   isActionPending: boolean;
 }
 
+function formatCountdown(seconds: number): string {
+  const remaining = Math.max(0, seconds);
+  const hours = Math.floor(remaining / 3600);
+  const minutes = Math.floor((remaining % 3600) / 60);
+  const secs = remaining % 60;
+  return `${hours}h ${minutes}m ${secs}s`;
+}
+
 export const CaseDetail: React.FC<CaseDetailProps> = ({
   caseData,
   notes,
@@ -44,6 +51,12 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({
   isActionPending,
 }) => {
   const { isConnected, account } = useWallet();
+  const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowSeconds(Math.floor(Date.now() / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   if (error) {
     return (
@@ -86,7 +99,6 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({
     );
   }
 
-  const nowSeconds = Math.floor(Date.now() / 1000);
   const isSubmissionOpen = caseData.state === 'OPEN' && nowSeconds < caseData.submission_deadline;
   const canLock = caseData.state === 'OPEN' && nowSeconds >= caseData.submission_deadline;
   const canEvaluate = caseData.state === 'LOCKED';
@@ -237,17 +249,19 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({
           <div className="info-row">
             <span className="info-label">Timeline & Deadlines</span>
             <span className="info-value" style={{ fontSize: 'var(--text-xs)' }}>
-              Created: {formatTimestamp(caseData.created_at)}
-              <br />
-              Submission Deadline: {formatTimestamp(caseData.submission_deadline)}{' '}
-              {nowSeconds >= caseData.submission_deadline ? '(Expired)' : '(Active)'}
+              Submission:{' '}
+              {nowSeconds >= caseData.submission_deadline
+                ? 'Expired'
+                : `${formatCountdown(caseData.submission_deadline - nowSeconds)} remaining`}
               <br />
               Challenge Window: {caseData.challenge_window_seconds}s ({caseData.challenge_window_seconds / 3600}h)
               {caseData.challenge_deadline > 0 && (
                 <>
                   <br />
-                  Challenge Deadline: {formatTimestamp(caseData.challenge_deadline)}{' '}
-                  {nowSeconds >= caseData.challenge_deadline ? '(Expired)' : '(Active)'}
+                  Challenge:{' '}
+                  {nowSeconds >= caseData.challenge_deadline
+                    ? 'Expired'
+                    : `${formatCountdown(caseData.challenge_deadline - nowSeconds)} remaining`}
                 </>
               )}
             </span>

@@ -1,14 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { App } from '../App';
 import { WalletProvider } from '../wallet/WalletContext';
 import * as repoModule from '../genlayer/repository';
 import * as clientModule from '../genlayer/client';
 import { CaseData } from '../genlayer/types';
+import { ReputationModal } from '../components/ReputationModal';
+import { CaseDetail } from '../components/CaseDetail';
 
 describe('Workbench Application Views & Deep-linking', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('15. Direct-route reload loads the requested case via URL parameter', async () => {
@@ -334,5 +340,83 @@ describe('Workbench Application Views & Deep-linking', () => {
     await waitFor(() => {
       expect(fetchCaseSpy).toHaveBeenCalledWith(expect.any(String), 2n);
     });
+  });
+
+  it('20. Deadline display shows a live countdown without absolute clock time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-23T12:00:00Z'));
+    const deadlineCase: CaseData = {
+      id: 3,
+      creator: '0x1111111111111111111111111111111111111111',
+      content_url: 'https://example.com/',
+      snapshot_hash: '1'.repeat(64),
+      submission_deadline: Math.floor(Date.now() / 1000) + 3661,
+      challenge_window_seconds: 3600,
+      challenge_deadline: 0,
+      state: 'OPEN',
+      note_count: 0,
+      challenge_count: 0,
+      provisional_selected_note_id: -1,
+      provisional_display_consequence: '',
+      provisional_rationale_digest: '',
+      provisional_scores: [],
+      final_selected_note_id: -1,
+      final_display_consequence: '',
+      final_rationale_digest: '',
+      final_scores: [],
+      impactful_challenge_ids: [],
+      created_at: Math.floor(Date.now() / 1000),
+      locked_at: 0,
+      evaluated_at: 0,
+      resolved_at: 0,
+      finalized_at: 0,
+    };
+
+    const { container } = render(
+      <WalletProvider>
+        <CaseDetail
+          caseData={deadlineCase}
+          notes={[]}
+          challenges={[]}
+          isLoading={false}
+          onOpenSubmitNote={vi.fn()}
+          onOpenSubmitChallenge={vi.fn()}
+          onLockCase={vi.fn()}
+          onEvaluateCase={vi.fn()}
+          onResolveChallenges={vi.fn()}
+          onFinalizeCase={vi.fn()}
+          isActionPending={false}
+        />
+      </WalletProvider>
+    );
+
+    expect(container).toHaveTextContent('Submission: 1h 1m 1s remaining');
+    expect(container).not.toHaveTextContent('Displayed time zone');
+    expect(container).not.toHaveTextContent('Unix timestamp');
+  });
+
+  it('21. Reputation lookup clears stale readback when the address changes', async () => {
+    vi.spyOn(repoModule, 'fetchReputation').mockResolvedValue(7n);
+
+    render(
+      <WalletProvider>
+        <ReputationModal
+          isOpen
+          onClose={vi.fn()}
+          contractAddress="0x1234567890abcdef1234567890abcdef12345678"
+        />
+      </WalletProvider>
+    );
+
+    const input = screen.getByRole('textbox', { name: 'Lookup Any Wallet Address' });
+    fireEvent.change(input, { target: { value: '0x1111111111111111111111111111111111111111' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await waitFor(() => expect(screen.getByText('7 pts')).toBeInTheDocument());
+
+    fireEvent.change(input, { target: { value: '0x1234' } });
+    expect(screen.queryByText('7 pts')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    expect(screen.getByText(/Please enter a valid 0x hexadecimal address/)).toBeInTheDocument();
+    expect(repoModule.fetchReputation).toHaveBeenCalledTimes(1);
   });
 });
