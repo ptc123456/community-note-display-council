@@ -42,12 +42,14 @@ export function classifyExecutionResult(receipt: any): ExecutionClassificationRe
     if (val === undefined || val === null) return;
     if (
       val === 'FINISHED_WITH_RETURN' ||
+      val === 'SUCCESS' ||
       val === ExecutionResult.FINISHED_WITH_RETURN ||
       val === 1
     ) {
       indicators.push('RETURN');
     } else if (
       val === 'FINISHED_WITH_ERROR' ||
+      val === 'ERROR' ||
       val === ExecutionResult.FINISHED_WITH_ERROR ||
       val === 2
     ) {
@@ -58,6 +60,7 @@ export function classifyExecutionResult(receipt: any): ExecutionClassificationRe
   };
 
   checkValue(receipt.txExecutionResultName);
+  checkValue(receipt.txExecutionResult);
   checkValue(receipt.tx_execution_result_name);
   checkValue(receipt.execution_result);
   checkValue(receipt.executionResult);

@@ -3,6 +3,7 @@ import {
   isValidContractAddress,
   formatAddress,
   formatTimestamp,
+  getExplorerTxUrl,
 } from '../genlayer/types';
 import {
   classifyExecutionResult,
@@ -87,6 +88,17 @@ describe('Repository and Transaction Engine', () => {
     expect(classifyExecutionResult(successReceipt2).classification).toBe('SUCCESS');
     expect(isExecutionSuccess(successReceipt2)).toBe(true);
 
+    const capturedStudioSuccessReceipt = {
+      status: 'FINALIZED',
+      result_name: 'MAJORITY_AGREE',
+      consensus_data: {
+        leader_receipt: {
+          execution_result: 'SUCCESS',
+        },
+      },
+    };
+    expect(classifyExecutionResult(capturedStudioSuccessReceipt).classification).toBe('SUCCESS');
+
     // 7b. Finished with error (Terminal Execution Failure)
     const errorReceipt1 = {
       status: 'FINALIZED',
@@ -107,6 +119,13 @@ describe('Repository and Transaction Engine', () => {
     expect(classifyExecutionResult(errorReceipt2).classification).toBe('ERROR');
     expect(isExecutionSuccess(errorReceipt2)).toBe(false);
 
+    expect(
+      classifyExecutionResult({
+        status: 'FINALIZED',
+        consensus_data: { leader_receipt: { execution_result: 'ERROR' } },
+      }).classification
+    ).toBe('ERROR');
+
     // 7c. Receipt with status FINALIZED but missing or conflicting indicators fails closed to UNKNOWN
     const plainFinalizedReceipt = {
       status: 'FINALIZED',
@@ -125,6 +144,12 @@ describe('Repository and Transaction Engine', () => {
     };
     expect(classifyExecutionResult(conflictingReceipt).classification).toBe('UNKNOWN');
     expect(isExecutionSuccess(conflictingReceipt)).toBe(false);
+  });
+
+  it('builds the current Studionet Explorer transaction route', () => {
+    expect(getExplorerTxUrl('0xabc')).toBe(
+      'https://explorer-studio.genlayer.com/transactions/0xabc'
+    );
   });
 
   it('8. Two-phase transaction completion & readback timeout transitions to readback_pending', async () => {

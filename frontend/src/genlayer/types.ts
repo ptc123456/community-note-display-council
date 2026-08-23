@@ -86,7 +86,7 @@ export function isValidContractAddress(address: string | undefined | null): bool
 }
 
 export function getExplorerTxUrl(hash: string): string {
-  return `${STUDIONET_EXPLORER}/tx/${hash}`;
+  return `${STUDIONET_EXPLORER}/transactions/${hash}`;
 }
 
 export function getExplorerAddressUrl(address: string): string {
