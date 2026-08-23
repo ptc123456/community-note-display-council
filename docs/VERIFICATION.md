@@ -2,6 +2,17 @@
 
 Status: replacement release live matrix complete; independent `POST_DEPLOY_TEST` approved. This document records attempted Studionet cases; failed attempts are retained and never counted as successful journeys.
 
+## Public release surfaces
+
+- Repository: `https://github.com/ptc123456/community-note-display-council`
+- GitHub default branch: `main`
+- Live app: `https://community-note-display-council.vercel.app`
+- Vercel owner/project: `shingg/community-note-display-council`
+- Vercel production deployment: `dpl_TDpNHJYfN4rx2w1voc2aWXbzWcXJ` (`READY`)
+- Production bundle check: title `Community Note Display Council · Studionet`; compiled JavaScript contains release contract `0x3aB3...2992` and does not contain superseded release contract `0x5971...0AB1`.
+- Primary-AI live smoke check: HTTP 200; authoritative cases `1` and `2` loaded; exact release address and Explorer link rendered; full reload began disconnected; Connect Wallet opened an accessible selector and, with no supported wallet installed in the Codex browser, truthfully displayed the MetaMask/OKX/Rabby installation state.
+- Mandatory user-executed independent-wallet Vercel E2E: `PENDING`; this cannot be replaced by the smoke check above.
+
 ## Superseded release boundary
 
 - Network: GenLayer Studionet (chain ID `61999`)

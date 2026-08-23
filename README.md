@@ -4,11 +4,13 @@ Community Note Display Council is a GenLayer dApp that ranks competing contextua
 
 ## Verified links
 
+- [Live app](https://community-note-display-council.vercel.app)
+- [GitHub repository](https://github.com/ptc123456/community-note-display-council)
 - [Studionet contract](https://explorer-studio.genlayer.com/address/0x3aB3Cf65F7BBD86bf998aCAcCc743Dd0Fdc82992): `0x3aB3Cf65F7BBD86bf998aCAcCc743Dd0Fdc82992`
 - [Deployment transaction](https://explorer-studio.genlayer.com/transactions/0x8123a9711312342118347513f45d4926bbd80cd5cfcff229f3c9fbb6ce23d54f)
 - [Verification ledger](docs/VERIFICATION.md)
 
-The production web URL will be added after the repository-bound Vercel deployment and required live-wallet E2E pass.
+The production deployment is live. Its required independent-wallet E2E result is recorded separately in the verification ledger after the user completes the numbered matrix.
 
 ## Trust problem
 
